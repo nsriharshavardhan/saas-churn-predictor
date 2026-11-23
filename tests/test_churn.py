@@ -72,3 +72,21 @@ def test_predict_endpoint_and_demo_page():
 def test_invalid_features_rejected():
     bad = {**HIGH_RISK.model_dump(), "feature_adoption_pct": 150.0}
     assert client.post("/predict", json=bad).status_code == 422
+
+
+def test_batch_prediction_summary():
+    payload = {"customers": [HIGH_RISK.model_dump(), MEDIUM_RISK.model_dump(), LOW_RISK.model_dump()]}
+    r = client.post("/predict/batch", json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data["predictions"]) == 3
+    summary = data["summary"]
+    assert summary["total_customers"] == 3
+    assert summary["high_risk_count"] == 1
+    assert summary["low_risk_count"] == 1
+    assert summary["at_risk_mrr_aud"] == 499.0
+    assert 0.0 < summary["avg_churn_probability"] < 1.0
+
+
+def test_batch_rejects_empty_list():
+    assert client.post("/predict/batch", json={"customers": []}).status_code == 422

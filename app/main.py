@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
 
 from app.model import MODEL_VERSION, ChurnPrediction, CustomerFeatures, predict_churn
 
@@ -12,6 +13,24 @@ app = FastAPI(
 )
 
 
+class BatchPredictIn(BaseModel):
+    customers: list[CustomerFeatures] = Field(..., min_length=1, max_length=200)
+
+
+class CohortSummary(BaseModel):
+    total_customers: int
+    high_risk_count: int
+    medium_risk_count: int
+    low_risk_count: int
+    avg_churn_probability: float
+    at_risk_mrr_aud: float
+
+
+class BatchPredictOut(BaseModel):
+    predictions: list[ChurnPrediction]
+    summary: CohortSummary
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok", "model_version": MODEL_VERSION}
@@ -20,6 +39,30 @@ def health() -> dict:
 @app.post("/predict", response_model=ChurnPrediction)
 def predict(features: CustomerFeatures) -> ChurnPrediction:
     return predict_churn(features)
+
+
+@app.post("/predict/batch", response_model=BatchPredictOut)
+def predict_batch(body: BatchPredictIn) -> BatchPredictOut:
+    preds = [predict_churn(c) for c in body.customers]
+    high = sum(1 for p in preds if p.risk_band == "HIGH")
+    med = sum(1 for p in preds if p.risk_band == "MEDIUM")
+    low = sum(1 for p in preds if p.risk_band == "LOW")
+    avg_p = round(sum(p.churn_probability for p in preds) / len(preds), 3)
+    at_risk_mrr = round(
+        sum(c.mrr_aud for c, p in zip(body.customers, preds) if p.risk_band == "HIGH"),
+        2,
+    )
+    return BatchPredictOut(
+        predictions=preds,
+        summary=CohortSummary(
+            total_customers=len(preds),
+            high_risk_count=high,
+            medium_risk_count=med,
+            low_risk_count=low,
+            avg_churn_probability=avg_p,
+            at_risk_mrr_aud=at_risk_mrr,
+        ),
+    )
 
 
 DEMO_HTML = """<!doctype html>
