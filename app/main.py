@@ -4,7 +4,13 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from app.model import MODEL_VERSION, ChurnPrediction, CustomerFeatures, predict_churn
+from app.model import (
+    MODEL_VERSION,
+    ChurnPrediction,
+    CustomerFeatures,
+    get_model_info,
+    predict_churn,
+)
 
 app = FastAPI(
     title="SaaS Churn Predictor",
@@ -65,6 +71,11 @@ def predict_batch(body: BatchPredictIn) -> BatchPredictOut:
     )
 
 
+@app.get("/model-info")
+def model_info() -> dict:
+    return get_model_info()
+
+
 DEMO_HTML = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -102,7 +113,7 @@ DEMO_HTML = """<!doctype html>
  <button>Score account</button>
 </form>
 <div id="out"></div>
-<p class="meta"><a href="/docs">API docs</a></p>
+<p class="meta"><a href="/docs">API docs</a> · <a href="/model-info">Model weights &amp; metrics</a></p>
 <script>
 const EX=[
  [4,3,4,2,24,25,"monthly",299],

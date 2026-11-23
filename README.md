@@ -12,6 +12,7 @@ contributing risk factors, and helps customer-success teams prioritise outreach.
 - **Interpretable logistic scorer.** Transparent log-odds weights over engagement, billing, support, and tenure features — no black-box pickle required.
 - **Interactive web demo** at `/` with pre-filled high-risk, watchlist, and healthy account presets.
 - **Cohort batch scoring.** `POST /predict/batch` scores up to 200 accounts at once and reports risk-band counts, average churn probability, and at-risk MRR (AUD).
+- **Model transparency.** `GET /model-info` exposes the model version, feature weights, risk-band thresholds, and validation metrics on a built-in benchmark set.
 - **Delivery:** pytest suite, GitHub Actions CI (tests + Docker build), Dockerfile, and one-click `render.yaml`.
 
 ## API
@@ -21,6 +22,7 @@ contributing risk factors, and helps customer-success teams prioritise outreach.
 | GET  | `/` | Interactive churn scorer UI |
 | POST | `/predict` | Score a single account |
 | POST | `/predict/batch` | Score up to 200 accounts with cohort summary |
+| GET  | `/model-info` | Model version, weights, thresholds, and benchmark metrics |
 | GET  | `/health` | Health check |
 
 ```bash

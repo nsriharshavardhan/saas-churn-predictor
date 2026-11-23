@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-MODEL_VERSION = "1.0.0"
+MODEL_VERSION = "1.1.0"
 
 # Log-odds weights. Positive values increase churn risk; negative values reduce it.
 INTERCEPT = -0.65
@@ -120,3 +120,49 @@ def predict_churn(features: CustomerFeatures) -> ChurnPrediction:
         top_risk_factors=top_factors,
         model_version=MODEL_VERSION,
     )
+
+
+# Small labelled benchmark set of synthetic B2B SaaS accounts (churned: 1 or 0).
+BENCHMARK_ACCOUNTS: list[tuple[CustomerFeatures, int]] = [
+    (CustomerFeatures(customer_id="bm-01", tenure_months=2, monthly_logins=1, support_tickets_30d=5, failed_payments_90d=2, days_since_last_login=30, feature_adoption_pct=15, contract_type="monthly"), 1),
+    (CustomerFeatures(customer_id="bm-02", tenure_months=3, monthly_logins=2, support_tickets_30d=3, failed_payments_90d=1, days_since_last_login=25, feature_adoption_pct=20, contract_type="monthly"), 1),
+    (CustomerFeatures(customer_id="bm-03", tenure_months=5, monthly_logins=0, support_tickets_30d=4, failed_payments_90d=0, days_since_last_login=45, feature_adoption_pct=10, contract_type="monthly"), 1),
+    (CustomerFeatures(customer_id="bm-04", tenure_months=1, monthly_logins=3, support_tickets_30d=2, failed_payments_90d=1, days_since_last_login=18, feature_adoption_pct=25, contract_type="monthly"), 1),
+    (CustomerFeatures(customer_id="bm-05", tenure_months=6, monthly_logins=4, support_tickets_30d=6, failed_payments_90d=1, days_since_last_login=22, feature_adoption_pct=30, contract_type="monthly"), 1),
+    (CustomerFeatures(customer_id="bm-06", tenure_months=4, monthly_logins=2, support_tickets_30d=1, failed_payments_90d=2, days_since_last_login=14, feature_adoption_pct=35, contract_type="monthly"), 1),
+    (CustomerFeatures(customer_id="bm-07", tenure_months=24, monthly_logins=42, support_tickets_30d=0, failed_payments_90d=0, days_since_last_login=1, feature_adoption_pct=85, contract_type="annual"), 0),
+    (CustomerFeatures(customer_id="bm-08", tenure_months=18, monthly_logins=28, support_tickets_30d=1, failed_payments_90d=0, days_since_last_login=2, feature_adoption_pct=78, contract_type="annual"), 0),
+    (CustomerFeatures(customer_id="bm-09", tenure_months=14, monthly_logins=20, support_tickets_30d=0, failed_payments_90d=0, days_since_last_login=3, feature_adoption_pct=70, contract_type="monthly"), 0),
+    (CustomerFeatures(customer_id="bm-10", tenure_months=30, monthly_logins=55, support_tickets_30d=1, failed_payments_90d=0, days_since_last_login=0, feature_adoption_pct=92, contract_type="annual"), 0),
+    (CustomerFeatures(customer_id="bm-11", tenure_months=12, monthly_logins=18, support_tickets_30d=1, failed_payments_90d=0, days_since_last_login=4, feature_adoption_pct=65, contract_type="annual"), 0),
+    (CustomerFeatures(customer_id="bm-12", tenure_months=16, monthly_logins=22, support_tickets_30d=0, failed_payments_90d=0, days_since_last_login=2, feature_adoption_pct=72, contract_type="monthly"), 0),
+]
+
+
+def get_model_info() -> dict:
+    correct = 0
+    brier_sum = 0.0
+    tp = fn = 0
+    for feats, actual in BENCHMARK_ACCOUNTS:
+        pred = predict_churn(feats)
+        predicted = 1 if pred.churn_probability >= 0.5 else 0
+        correct += int(predicted == actual)
+        brier_sum += (pred.churn_probability - actual) ** 2
+        if actual == 1 and predicted == 1:
+            tp += 1
+        elif actual == 1 and predicted == 0:
+            fn += 1
+    n = len(BENCHMARK_ACCOUNTS)
+    return {
+        "model_version": MODEL_VERSION,
+        "model_type": "interpretable_logistic_regression",
+        "intercept": INTERCEPT,
+        "feature_weights": FEATURE_WEIGHTS,
+        "risk_band_thresholds": RISK_BAND_THRESHOLDS,
+        "validation_metrics": {
+            "benchmark_samples": n,
+            "accuracy": round(correct / n, 3),
+            "churn_recall": round(tp / max(tp + fn, 1), 3),
+            "brier_score": round(brier_sum / n, 4),
+        },
+    }

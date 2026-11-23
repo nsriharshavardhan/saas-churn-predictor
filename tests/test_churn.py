@@ -90,3 +90,13 @@ def test_batch_prediction_summary():
 
 def test_batch_rejects_empty_list():
     assert client.post("/predict/batch", json={"customers": []}).status_code == 422
+
+
+def test_model_info_endpoint():
+    r = client.get("/model-info")
+    assert r.status_code == 200
+    info = r.json()
+    assert info["model_version"]
+    assert "failed_payments_90d" in info["feature_weights"]
+    assert info["risk_band_thresholds"]["HIGH"] == 0.65
+    assert info["validation_metrics"]["accuracy"] >= 0.9
