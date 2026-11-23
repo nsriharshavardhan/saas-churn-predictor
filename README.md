@@ -2,7 +2,11 @@
 
 [![CI](https://github.com/nsriharshavardhan/saas-churn-predictor/actions/workflows/ci.yml/badge.svg)](https://github.com/nsriharshavardhan/saas-churn-predictor/actions/workflows/ci.yml)
 
-**Live demo:** https://saas-churn-predictor.onrender.com
+**Live demo:** https://saas-churn-predictor.onrender.com · [API docs](https://saas-churn-predictor.onrender.com/docs) · [Model info](https://saas-churn-predictor.onrender.com/model-info)
+
+> Free-tier Render services sleep when idle, so the first request can take ~30–50 s to wake up.
+
+<!-- Add a screenshot of the scorer UI after deploying: docs/screenshot.png -->
 
 A FastAPI scoring service that estimates 90-day churn risk for B2B SaaS accounts, lists the top
 contributing risk factors, and helps customer-success teams prioritise outreach.
@@ -13,6 +17,7 @@ contributing risk factors, and helps customer-success teams prioritise outreach.
 - **Interactive web demo** at `/` with pre-filled high-risk, watchlist, and healthy account presets.
 - **Cohort batch scoring.** `POST /predict/batch` scores up to 200 accounts at once and reports risk-band counts, average churn probability, and at-risk MRR (AUD).
 - **Model transparency.** `GET /model-info` exposes the model version, feature weights, risk-band thresholds, and validation metrics on a built-in benchmark set.
+- **Retention playbooks.** Every prediction maps its dominant risk signals to a concrete `recommended_action` (payment retry, support escalation, CSM onboarding check-in, or annual-plan offer).
 - **Delivery:** pytest suite, GitHub Actions CI (tests + Docker build), Dockerfile, and one-click `render.yaml`.
 
 ## API

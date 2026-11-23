@@ -100,3 +100,10 @@ def test_model_info_endpoint():
     assert "failed_payments_90d" in info["feature_weights"]
     assert info["risk_band_thresholds"]["HIGH"] == 0.65
     assert info["validation_metrics"]["accuracy"] >= 0.9
+
+
+def test_retention_playbooks():
+    assert "payment-retry" in predict_churn(HIGH_RISK).recommended_action.lower()
+    low_usage = LOW_RISK.model_copy(update={"monthly_logins": 2, "days_since_last_login": 25})
+    assert "onboarding" in predict_churn(low_usage).recommended_action.lower()
+    assert "healthy" in predict_churn(LOW_RISK).recommended_action.lower()

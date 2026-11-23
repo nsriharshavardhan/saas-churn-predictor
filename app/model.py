@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-MODEL_VERSION = "1.1.0"
+MODEL_VERSION = "1.2.0"
 
 # Log-odds weights. Positive values increase churn risk; negative values reduce it.
 INTERCEPT = -0.65
@@ -50,6 +50,7 @@ class ChurnPrediction(BaseModel):
     churn_probability: float = Field(..., ge=0.0, le=1.0)
     risk_band: Literal["LOW", "MEDIUM", "HIGH"]
     top_risk_factors: list[str]
+    recommended_action: str
     model_version: str = MODEL_VERSION
 
 
@@ -98,6 +99,21 @@ def _contributions(f: CustomerFeatures) -> list[tuple[str, float, str]]:
     ]
 
 
+def recommend_action(f: CustomerFeatures, risk_band: str) -> str:
+    """Map concrete risk signals to an actionable retention playbook."""
+    if f.failed_payments_90d > 0:
+        return "Trigger automated payment-retry email and update-card link"
+    if f.support_tickets_30d >= 4 and risk_band != "LOW":
+        return "Escalate open tickets to senior support and schedule account health call"
+    if f.monthly_logins < 5 or f.days_since_last_login >= 21:
+        return "Assign CSM onboarding check-in and send guided re-engagement walkthrough"
+    if f.feature_adoption_pct < 35 and risk_band != "LOW":
+        return "Invite account champions to a 20-minute workflow adoption session"
+    if risk_band == "MEDIUM":
+        return "Offer annual-plan discount and share quarterly value summary"
+    return "Healthy account — keep on standard nurture cadence"
+
+
 def predict_churn(features: CustomerFeatures) -> ChurnPrediction:
     contribs = _contributions(features)
     logit = INTERCEPT + sum(delta for _, delta, _ in contribs)
@@ -118,6 +134,7 @@ def predict_churn(features: CustomerFeatures) -> ChurnPrediction:
         churn_probability=prob,
         risk_band=band,
         top_risk_factors=top_factors,
+        recommended_action=recommend_action(features, band),
         model_version=MODEL_VERSION,
     )
 
